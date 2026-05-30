@@ -27,7 +27,8 @@ export const withDB = <R>(fn: (fixture: Fixture) => R): R => {
       },
       insert(insights) {
         for (const item of insights) {
-          db.exec(insightsTable.insertStatement(item));
+          const [sql, params] = insightsTable.insertStatement(item);
+          db.exec(sql, params);
         }
       },
     },

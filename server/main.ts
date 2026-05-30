@@ -27,8 +27,18 @@ console.log("Initialising server");
 
 const router = new oak.Router();
 
+const setError = (
+  ctx: oak.Context,
+  status: number,
+  code: string,
+  message: string,
+) => {
+  ctx.response.status = status;
+  ctx.response.body = { error: { code, message } };
+};
+
 router.get("/_health", (ctx) => {
-  ctx.response.body = "OK";
+  ctx.response.body = { status: "ok" };
   ctx.response.status = 200;
 });
 
@@ -42,15 +52,14 @@ router.get("/insights/:id", (ctx) => {
   const id = Number(ctx.params.id);
 
   if (!Number.isInteger(id)) {
-    ctx.response.body = { error: "Invalid id" };
-    ctx.response.status = 400;
+    setError(ctx, 400, "INVALID_ID", "Invalid id");
     return;
   }
 
   const result = lookupInsight({ db, id });
 
   if (!result) {
-    ctx.response.status = 404;
+    setError(ctx, 404, "NOT_FOUND", "Insight not found");
     return;
   }
 
@@ -59,22 +68,49 @@ router.get("/insights/:id", (ctx) => {
 });
 
 router.post("/insights", async (ctx) => {
-  let brand: number;
-  let text: string;
+  let body: unknown;
 
   try {
-    const body = await ctx.request.body.json();
-    brand = Number(body?.brand);
-    text = typeof body?.text === "string" ? body.text.trim() : "";
+    body = await ctx.request.body.json();
   } catch {
-    ctx.response.body = { error: "Invalid request body" };
-    ctx.response.status = 400;
+    setError(ctx, 400, "INVALID_REQUEST_BODY", "Invalid request body");
     return;
   }
 
-  if (!Number.isInteger(brand) || !text) {
-    ctx.response.body = { error: "Invalid input" };
-    ctx.response.status = 400;
+  if (typeof body !== "object" || body === null) {
+    setError(ctx, 400, "INVALID_REQUEST_BODY", "Invalid request body");
+    return;
+  }
+
+  const input = body as Record<string, unknown>;
+  const hasBrand = Object.hasOwn(input, "brand");
+  const hasText = Object.hasOwn(input, "text");
+
+  if (!hasBrand) {
+    setError(ctx, 400, "INVALID_BRAND", "Missing brand");
+    return;
+  }
+
+  if (!hasText) {
+    setError(ctx, 400, "INVALID_TEXT", "Missing text");
+    return;
+  }
+
+  const brand = Number(input.brand);
+  const text = typeof input.text === "string" ? input.text.trim() : "";
+
+  if (!Number.isInteger(brand) || brand < 0) {
+    setError(ctx, 400, "INVALID_BRAND", "Invalid brand");
+    return;
+  }
+
+  if (!text) {
+    setError(ctx, 400, "INVALID_TEXT", "Text is required");
+    return;
+  }
+
+  if (text.length > 500) {
+    setError(ctx, 400, "TEXT_TOO_LONG", "Text must be 500 characters or less");
     return;
   }
 
@@ -88,15 +124,14 @@ router.delete("/insights/:id", (ctx) => {
   const id = Number(ctx.params.id);
 
   if (!Number.isInteger(id)) {
-    ctx.response.body = { error: "Invalid id" };
-    ctx.response.status = 400;
+    setError(ctx, 400, "INVALID_ID", "Invalid id");
     return;
   }
 
   const existing = lookupInsight({ db, id });
 
   if (!existing) {
-    ctx.response.status = 404;
+    setError(ctx, 404, "NOT_FOUND", "Insight not found");
     return;
   }
 
@@ -106,6 +141,19 @@ router.delete("/insights/:id", (ctx) => {
   ctx.response.status = 200;
 });
 const app = new oak.Application();
+
+app.use(async (ctx, next) => {
+  try {
+    await next();
+
+    if (ctx.response.status === 404 && !ctx.response.body) {
+      setError(ctx, 404, "NOT_FOUND", "Not found");
+    }
+  } catch (error) {
+    console.error(error);
+    setError(ctx, 500, "INTERNAL_SERVER_ERROR", "Internal server error");
+  }
+});
 
 app.use(router.routes());
 app.use(router.allowedMethods());
