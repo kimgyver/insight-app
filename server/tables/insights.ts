@@ -7,6 +7,11 @@ export const createTable = `
   )
 `;
 
+export const createTableIfNotExists = createTable.replace(
+  "CREATE TABLE",
+  "CREATE TABLE IF NOT EXISTS",
+);
+
 export type Row = {
   id: number;
   brand: number;

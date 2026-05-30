@@ -5,16 +5,47 @@ import styles from "./app.module.css";
 import type { Insight } from "../schemas/insight.ts";
 
 export const App = () => {
-  const [insights, setInsights] = useState<Insight>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchInsights = () => {
+    fetch(`/api/insights`)
+      .then((res) => res.json())
+      .then(
+        (
+          data: Array<{
+            id: number;
+            brand: number;
+            createdAt: string;
+            text: string;
+          }>,
+        ) => {
+          setInsights(
+            data.map((item) => ({
+              id: item.id,
+              brandId: item.brand,
+              date: new Date(item.createdAt),
+              text: item.text,
+            })),
+          );
+          setLoading(false);
+        },
+      );
+  };
 
   useEffect(() => {
-    fetch(`/api/insights`).then((res) => setInsights(res.json()));
+    fetchInsights();
   }, []);
 
   return (
     <main className={styles.main}>
-      <Header />
-      <Insights className={styles.insights} insights={insights} />
+      <Header onRefresh={fetchInsights} />
+      <Insights
+        className={styles.insights}
+        insights={insights}
+        onRefresh={fetchInsights}
+        loading={loading}
+      />
     </main>
   );
 };

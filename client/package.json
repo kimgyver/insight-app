@@ -1,0 +1,5 @@
+{
+  "name": "@suittracker/client",
+  "private": true,
+  "type": "module"
+}
