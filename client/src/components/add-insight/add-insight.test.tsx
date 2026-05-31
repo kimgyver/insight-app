@@ -4,6 +4,7 @@ import { AddInsight } from "./add-insight.tsx";
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 describe("add insight", () => {
