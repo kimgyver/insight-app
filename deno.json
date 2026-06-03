@@ -9,6 +9,7 @@
     },
     "dev:server": "cd server && deno task dev",
     "dev:client": "cd client && deno task dev",
+    "test:server": "cd server && deno task test",
     "test:client": "cd client && deno task test"
   },
   "compilerOptions": {
