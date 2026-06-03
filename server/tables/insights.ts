@@ -7,6 +7,11 @@ export const createTable = `
   )
 `;
 
+export const createTableIfNotExists = createTable.replace(
+  "CREATE TABLE",
+  "CREATE TABLE IF NOT EXISTS",
+);
+
 export type Row = {
   id: number;
   brand: number;
@@ -20,5 +25,9 @@ export type Insert = {
   text: string;
 };
 
-export const insertStatement = (item: Insert) =>
-  `INSERT INTO insights (brand, createdAt, text) VALUES (${item.brand}, '${item.createdAt}', '${item.text}')`;
+export type InsertStatement = [string, [number, string, string]];
+
+export const insertStatement = (item: Insert): InsertStatement => [
+  "INSERT INTO insights (brand, createdAt, text) VALUES (?, ?, ?)",
+  [item.brand, item.createdAt, item.text],
+];
